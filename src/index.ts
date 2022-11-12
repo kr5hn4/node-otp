@@ -87,6 +87,7 @@ export const generateTOTP = (
  * @param otp The OTP to be validated
  * @param secret The base32 secret.
  * @param timeStep The time step in seconds.
+ * @param timeDrift Backward and forwards timeDrift in terms of timeStep.
  * @param time Unix time in seconds.
  * @param alg The hashing algorithm to be used with HMAC while generating the OTP.
  * @returns HOTP as string for the given counter and secret
@@ -97,9 +98,18 @@ export const validateTOTP = (
   secret: string,
   timeStep: number = 60,
   time: number = Math.floor(Date.now() / 1000),
+  timeDrift: [number, number] = [0,0],
   alg: Algorithm = 'sha1'
 ): boolean => {
-  return otp === generateTOTP(secret, timeStep, time, otp.length, alg);
+  if (timeDrift[0] > timeDrift[1] || timeDrift[0] > 0 || timeDrift[1] < 0){
+    throw new Error('Invalid Time drift values')
+  }
+  const validOtps = [];
+  for (let i = -timeDrift[0]; i <= timeDrift[1]; i++) {
+    validOtps.push(generateTOTP(secret, timeStep, time + (i*timeStep), otp.length, alg))
+  }
+
+  return validOtps.includes(otp);
 };
 
 /**
